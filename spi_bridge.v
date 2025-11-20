@@ -50,31 +50,31 @@ module spi_bridge(
             byte_sync_n  <= 1'b0;
             data_in_n    <= 8'd0;
             data_int     <= 8'd0;
-            count_tx     <= 3'd0;
-            count_rx     <= 3'd0;
+            count_tx     <= 3'd7;
+            count_rx     <= 3'd7;
         end else begin
             byte_sync_n <= 1'b0; // default
 
             if (!cs_n) begin
                 // transmit
                 mosi_n <= data_out[count_tx];
-                if (count_tx == 3'd7)
-                    count_tx <= 3'd0;
+                if (count_tx == 3'd0)
+                    count_tx <= 3'd7;
                 else
-                    count_tx <= count_tx + 1'b1;
+                    count_tx <= count_tx - 1'b1;
 
                 // receive
                 data_int[count_rx] <= miso;
-                if (count_rx == 3'd7) begin
+                if (count_rx == 3'd0) begin
                     data_in_n   <= data_int;
                     byte_sync_n <= 1'b1;
-                    count_rx    <= 3'd0;
+                    count_rx    <= 3'd7;
                 end else begin
-                    count_rx <= count_rx + 1'b1;
+                    count_rx <= count_rx - 1'b1;
                 end
             end else begin
-                count_tx <= 3'd0;
-                count_rx <= 3'd0;
+                count_tx <= 3'd7;
+                count_rx <= 3'd7;
             end
         end
     end
