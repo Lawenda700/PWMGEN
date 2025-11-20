@@ -34,7 +34,7 @@ module counter(
     );
     
     reg[15:0] count_val_r;
-    assign count_val=count_val_r;
+    assign count_val=count_val_r-1;
     reg[15:0] inner_counter=16'h0000;
  
     wire[15:0] ss=(16'b0000000000000001<<prescale);
@@ -42,17 +42,19 @@ module counter(
     if(!rst_n | count_reset) begin
         inner_counter<=16'h0000;
         if(upnotdown)
-            count_val_r <= 16'h0000;
+            count_val_r <= 16'h0001;
         else count_val_r<=period;
         end
     else begin
         // Here should be the rest of the implementation
         if(en) begin
             if(upnotdown) begin
-            if(~(count_val_r^period))
-                count_val_r<=16'h0000;
+            if(count_val_r==period &&inner_counter>=ss-1) begin
+                count_val_r<=16'h0001;
+                inner_counter<=16'h0000;
+                end
                 else begin
-                    if(~(inner_counter^ss)) begin
+                    if(inner_counter>=ss-1) begin
                         count_val_r<=count_val_r+1'b1;
                         inner_counter<=16'h0000;
                     end
@@ -62,10 +64,12 @@ module counter(
                 end
             end
             else begin 
-                if(~(count_val_r^15'h0000))
+                if(count_val_r==16'h0001 &&inner_counter>=ss-1) begin
                 count_val_r<=period;
+                inner_counter<=16'h0000;
+                end
                 else begin
-                    if(~(inner_counter^ss)) begin
+                    if(inner_counter>=ss-1) begin
                         count_val_r<=count_val_r-1'b1;
                         inner_counter<=16'h0000;
                     end
