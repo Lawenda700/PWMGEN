@@ -35,6 +35,7 @@ module spi_bridge(
     input[7:0] data_out
 
     );
+    //Creem registri pentru blocurile always si countere pentru a numara cati biti mai avem de citit/scris
     reg mosi_n;
     assign mosi=mosi_n;
     reg byte_sync_n;
@@ -45,7 +46,7 @@ module spi_bridge(
     reg[2:0] count_rx;
     reg[2:0] count_tx;
     always @(posedge sclk or negedge rst_n) begin
-        if (!rst_n) begin
+        if (!rst_n) begin //resetarea registrilor
             mosi_n       <= 1'b0;
             byte_sync_n  <= 1'b0;
             data_in_n    <= 8'd0;
@@ -53,29 +54,49 @@ module spi_bridge(
             count_tx     <= 3'd7;
             count_rx     <= 3'd7;
         end else begin
-            byte_sync_n <= 1'b0; // default
+            
 
             if (!cs_n) begin
-                // transmit
+                // citim de la MSB
                 mosi_n <= data_out[count_tx];
-                if (count_tx == 3'd0)
+                if (count_tx == 3'd0) begin
                     count_tx <= 3'd7;
+                   
+                    end
                 else
                     count_tx <= count_tx - 1'b1;
 
                 // receive
-                data_int[count_rx] <= miso;
-                if (count_rx == 3'd0) begin
+                
+                
+            end else begin
+                count_tx <= 3'd7;
+                
+            end
+        end
+    end
+    always@(negedge sclk or negedge rst_n) begin 
+     if (!rst_n) begin //resetarea registrilor
+            mosi_n       <= 1'b0;
+            byte_sync_n  <= 1'b0;
+            data_in_n    <= 8'd0;
+            data_int     <= 8'd0;
+            count_tx     <= 3'd7;
+            count_rx     <= 3'd7;
+            end else begin
+            byte_sync_n <= 1'b0;  // default
+        if(!cs_n) begin  //scriem de la MSB in variabila auxiliara data_int pe care o copiem in data_in_n cand ajungem la bitul final
+            data_int[count_rx] <= miso; 
+            if (count_rx == 3'd0) begin
                     data_in_n   <= data_int;
                     byte_sync_n <= 1'b1;
                     count_rx    <= 3'd7;
                 end else begin
                     count_rx <= count_rx - 1'b1;
-                end
-            end else begin
-                count_tx <= 3'd7;
-                count_rx <= 3'd7;
-            end
+                end 
+        end else begin
+        count_rx <= 3'd7;
+        end
         end
     end
    

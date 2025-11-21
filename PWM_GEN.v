@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module PWM_GEN(
+module pwm_gen(
     // peripheral clock signals
     input clk,
     input rst_n,

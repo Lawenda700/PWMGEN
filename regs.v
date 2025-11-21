@@ -1,4 +1,4 @@
-module regs (
+ module regs (
     // peripheral clock signals
     input clk,
     input rst_n,
@@ -23,16 +23,12 @@ module regs (
 );
 
     // Definirea adreselor conform tabelului din documentație
-    localparam ADDR_PERIOD_L    = 6'h00;  // PERIOD[7:0]
-    localparam ADDR_PERIOD_H    = 6'h01;  // PERIOD[15:8]
+    localparam ADDR_PERIOD    = 6'h00;  // PERIOD[7:0]
     localparam ADDR_COUNTER_EN  = 6'h02;
-    localparam ADDR_COMPARE1_L  = 6'h03;  // COMPARE1[7:0]
-    localparam ADDR_COMPARE1_H  = 6'h04;  // COMPARE1[15:8]
-    localparam ADDR_COMPARE2_L  = 6'h05;  // COMPARE2[7:0]
-    localparam ADDR_COMPARE2_H  = 6'h06;  // COMPARE2[15:8]
+    localparam ADDR_COMPARE1  = 6'h03;  // COMPARE1[7:0]
+    localparam ADDR_COMPARE2  = 6'h05;  // COMPARE2[7:0]]
     localparam ADDR_COUNTER_RESET = 6'h07;
-    localparam ADDR_COUNTER_VAL_L = 6'h08; // COUNTER_VAL[7:0] - Read only
-    localparam ADDR_COUNTER_VAL_H = 6'h09; // COUNTER_VAL[15:8] - Read only
+    localparam ADDR_COUNTER_VAL = 6'h08; // COUNTER_VAL[7:0] - Read only
     localparam ADDR_PRESCALE    = 6'h0A;
     localparam ADDR_UPNOTDOWN   = 6'h0B;
     localparam ADDR_PWM_EN      = 6'h0C;
@@ -59,7 +55,11 @@ module regs (
     assign upnotdown = upnotdown_reg;
     assign pwm_en = pwm_en_reg;
     assign functions = functions_reg;
-
+    parameter S3=0;
+    parameter S4=1;
+    parameter S5=2;
+    reg state,next_state;
+    reg sb;
     // Logica de scriere în registrii
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -73,56 +73,71 @@ module regs (
             upnotdown_reg <= 1'b0;
             pwm_en_reg <= 1'b0;
             functions_reg <= 8'h00;
-        end else begin
+             state<=S3;
+             end
+        else state<=next_state;
+        end 
+ always @(*) begin
             // COUNTER_RESET se auto-resetează după 2 ciclii de ceas
             // (conform documentației: "se golește după al doilea ciclu de ceas")
+            case(state)
+            S3: begin
+                if(data_write[0]) begin sb=1; end
+                    else begin sb=0; end
+                if(write) begin next_state=S4; end
+                    else next_state=S5;
+               end
+            S4: begin
             if (counter_reset_reg)
-                counter_reset_reg <= 1'b0;
+                counter_reset_reg = 1'b0;
             
             // Operații de scriere
-            if (write) begin
+           
                 case (addr)
-                    ADDR_PERIOD_L: period_reg[7:0] <= data_write;
-                    ADDR_PERIOD_H: period_reg[15:8] <= data_write;
-                    ADDR_COUNTER_EN: counter_en_reg <= data_write[0];
-                    ADDR_COMPARE1_L: compare1_reg[7:0] <= data_write;
-                    ADDR_COMPARE1_H: compare1_reg[15:8] <= data_write;
-                    ADDR_COMPARE2_L: compare2_reg[7:0] <= data_write;
-                    ADDR_COMPARE2_H: compare2_reg[15:8] <= data_write;
-                    ADDR_COUNTER_RESET: counter_reset_reg <= data_write[0];
-                    ADDR_PRESCALE: prescale_reg <= data_write;
-                    ADDR_UPNOTDOWN: upnotdown_reg <= data_write[0];
-                    ADDR_PWM_EN: pwm_en_reg <= data_write[0];
-                    ADDR_FUNCTIONS: functions_reg <= data_write[1:0]; // Doar primii 2 biți sunt relevanți
+                    ADDR_PERIOD: begin if(sb)   period_reg[15:8]= data_write;
+                    else period_reg[7:0]= data_write;
+                    end
+                    ADDR_COUNTER_EN: counter_en_reg = data_write[0];
+                    ADDR_COMPARE1: begin if(sb) compare1_reg[15:8]= data_write;
+                    else compare1_reg[7:0]= data_write; end
+                    ADDR_COMPARE2: begin if(sb) compare2_reg[15:8]= data_write; 
+                    else compare2_reg[7:0]= data_write; end
+                    ADDR_COUNTER_RESET: counter_reset_reg = data_write[0];
+                    ADDR_PRESCALE: prescale_reg = data_write;
+                    ADDR_UPNOTDOWN: upnotdown_reg = data_write[0];
+                    ADDR_PWM_EN: pwm_en_reg = data_write[0];
+                    ADDR_FUNCTIONS: functions_reg= data_write[1:0]; // Doar primii 2 biți sunt relevanți
                     default: ; // Adresele nerecunoscute sunt ignorate
                 endcase
-            end
-        end
-    end
+                next_state=S3;
+            
+                end
 
     // Logica de citire din registrii
-    always @(*) begin
-        if (read) begin
+   
+          S5:
+          begin
             case (addr)
-                ADDR_PERIOD_L: data_read = period_reg[7:0];
-                ADDR_PERIOD_H: data_read = period_reg[15:8];
+                ADDR_PERIOD: begin if(sb) data_read = period_reg[15:8];
+                else data_read = period_reg[7:0];  end
                 ADDR_COUNTER_EN: data_read = {7'b0, counter_en_reg};
-                ADDR_COMPARE1_L: data_read = compare1_reg[7:0];
-                ADDR_COMPARE1_H: data_read = compare1_reg[15:8];
-                ADDR_COMPARE2_L: data_read = compare2_reg[7:0];
-                ADDR_COMPARE2_H: data_read = compare2_reg[15:8];
+                ADDR_COMPARE1: begin if(sb) data_read = compare1_reg[15:8]; 
+                else data_read = compare1_reg[7:0]; end
+                ADDR_COMPARE2: begin if(sb) data_read = compare2_reg[15:8];
+                else data_read = compare2_reg[7:0]; end
                 ADDR_COUNTER_RESET: data_read = {7'b0, counter_reset_reg};
-                ADDR_COUNTER_VAL_L: data_read = counter_val[7:0];  // Read-only
-                ADDR_COUNTER_VAL_H: data_read = counter_val[15:8]; // Read-only
+                ADDR_COUNTER_VAL: begin if(sb) data_read = counter_val[15:8];
+                else data_read = counter_val[7:0]; end  // Read-only
                 ADDR_PRESCALE: data_read = prescale_reg;
                 ADDR_UPNOTDOWN: data_read = {7'b0, upnotdown_reg};
                 ADDR_PWM_EN: data_read = {7'b0, pwm_en_reg};
                 ADDR_FUNCTIONS: data_read = {6'b0, functions_reg[1:0]};
                 default: data_read = 8'h00; // Adresele nerecunoscute returnează 0
             endcase
-        end else begin
-            data_read = 8'h00;
-        end
+            next_state=S3;
+       
+            end
+    endcase
     end
 
 endmodule

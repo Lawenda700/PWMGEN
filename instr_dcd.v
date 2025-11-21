@@ -35,6 +35,7 @@ module instr_dcd(
     input[7:0] data_read,
     output[7:0] data_write
     );
+    //Creem registri pentru blocurile always si countere pentru a numara cati biti mai avem de citit/scris
     reg[7:0] data_out_r;
     assign data_out=data_out_r;
     reg read_r;
@@ -45,6 +46,7 @@ module instr_dcd(
     assign addr=addr_r;
     reg[7:0] data_write_r;
     assign data_write=data_write_r;
+    //Folosim un AFD pentru implementare
     parameter S0=0;
     parameter S1=1;
     parameter S2=2;
@@ -56,27 +58,30 @@ module instr_dcd(
     end
     always@(*) begin
         case(state)
-        S0: 
+        S0: //Citim daca instructiunea este de read sau write+ unde citim/scriem 
             if(byte_sync) begin
                 if(data_in[7]) begin
                     write_r=1;
-                    read_r=data_in[6];
+                   
+                    
                     
                 end
               else begin
               write_r=0;
               read_r=1;
               end
+              data_write_r=8'b0; //trimitem in data_write un semnal ca sa vedem daca accsesam MSB sau LSB
+              data_write_r[0]=data_in[6];
               addr_r=data_in[5:0];
               if(!write_r)
                 next_state=S2;
                 else next_state=S1;
             end
-        S1:   if(byte_sync) begin
+        S1:   if(byte_sync) begin // S1 daca instructiunea a fost de scriere
                     data_write_r=data_in;
                     next_state=S0;
                 end
-        S2:    begin
+        S2:    begin //S2 daca instructiunea a fost de citire
                 data_out_r=data_read;
                 next_state=S0;
                     end
