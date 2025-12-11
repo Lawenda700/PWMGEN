@@ -47,47 +47,57 @@ module instr_dcd(
     reg[7:0] data_write_r;
     assign data_write=data_write_r;
     //Folosim un AFD pentru implementare
-    parameter S0=0;
-    parameter S1=1;
-    parameter S2=2;
-    reg state,next_state;
-    always@(posedge clk or negedge rst_n) begin
-        if(!rst_n)
-            state<=S0;
-        else state<=next_state;
+   parameter S0 = 2'b00;
+parameter S1 = 2'b01;
+parameter S2 = 2'b10;
+reg [1:0] state, next_state;
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin state <= S0;
+      read_r       = 1'b0;
+    write_r      = 1'b0;
+    addr_r       = 6'd0;
+    data_out_r   = 8'd0;
+    data_write_r = 8'd0;
+    next_state   = S0;
     end
-    always@(*) begin
-        case(state)
-        S0: //Citim daca instructiunea este de read sau write+ unde citim/scriem 
-            if(byte_sync) begin
-                if(data_in[7]) begin
-                    write_r=1;
-                   
-                    
-                    
-                end
-              else begin
-              write_r=0;
-              read_r=1;
-              end
-              data_write_r=8'b0; //trimitem in data_write un semnal ca sa vedem daca accsesam MSB sau LSB
-              data_write_r[0]=data_in[6];
-              addr_r=data_in[5:0];
-              if(!write_r)
-                next_state=S2;
-                else next_state=S1;
+    else state <= next_state;
+end
+
+always @(*) begin
+    // default outputs
+  
+
+    case (state)
+      S0: begin
+         if (byte_sync) begin
+            if (data_in[7]) begin
+               write_r = 1'b1;
+               addr_r  = data_in[5:0];
+               data_write_r[0] = data_in[6];
+               next_state = S1;
+            end else begin
+               read_r  = 1'b1;
+               addr_r  = data_in[5:0];
+               next_state = S2;
             end
-        S1:   if(byte_sync) begin // S1 daca instructiunea a fost de scriere
-                    data_write_r=data_in;
-                    next_state=S0;
-                end
-        S2:    begin //S2 daca instructiunea a fost de citire
-                data_out_r=data_read;
-                next_state=S0;
-                    end
-                
-                
-        
-        endcase
-    end
+         end
+      end
+      S1: begin
+         if (byte_sync) begin
+            data_write_r = data_in;
+             write_r      = 1'b0;
+            addr_r       = 6'd0;
+            next_state = S0;
+         end
+      end
+      S2: begin
+         data_out_r = data_read; // keep stable until next
+         read_r       = 1'b0;
+          addr_r       = 6'd0;
+         next_state = S0;
+      end
+    endcase
+end
+
 endmodule
