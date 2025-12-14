@@ -49,8 +49,8 @@ spi_bridge i_spi_bridge (
     .rst_n(rst_n),
     .sclk(sclk),
     .cs_n(cs_n),
-    .miso(miso),
     .mosi(mosi),
+    .miso(miso),
     .byte_sync(byte_sync),
     .data_in(data_in),
     .data_out(data_out)
