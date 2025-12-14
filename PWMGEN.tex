@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage{graphicx} 
 \title{Documentație PWMGEN}
-\author{Brăduț-Mihai Iordache(Lawenda700)\\ Eduard Simion(eddy-24)\\Mario Timoc(MarioTimoc21)} 
+\author{Brăduț-Mihai Iordache(Lawenda700)\\ Eduard-Alexandru Simion(eddy-24)\\Ovidiu-Mario Timoc(MarioTimoc21)} 
 
 \renewcommand{\contentsname}{Cuprins}
 \begin{document}
@@ -13,17 +13,13 @@
 \newpage
 \section{SPI BRIDGE}
 Modulul SPI bridge folosește 2 blocuri \texttt{always}, unul pentru frontul crescător al ceasului 
-și celălalt pentru frontul descrescător. Ambele verifică activarea funcției de reset și, în caz că aceasta este activată, resetează valorile output-urilor la valorile default + valoarea celor 2 countere interne. Pe frontul crescător (blocul \texttt{always posedge}) avem citirea în MOSI. Se citește de la MSB la LSB valoarea din \texttt{data\_out} cu ajutorul unui counter care este decrementat de la 7 până la 0, iar odată ce se citește valoarea de la bitul 0 al \texttt{data\_out}, counter-ul se resetează.\\
+și celălalt pentru frontul descrescător. Ambele verifică activarea funcției de reset și, în caz că aceasta este activată, resetează valorile output-urilor la valorile default + valoarea celor 2 countere interne.\\
 \\
-În mod similar, pe frontul descrescător (blocul \texttt{always negedge}) se scrie în registrul intermediar \texttt{data\_int} de la MSB la LSB valorile primite din MISO, cu ajutorul unui counter intern care funcționează identic cu cel utilizat pentru citirea în MOSI pe posedge. Atunci când counter-ul pentru MISO atinge valoarea 0 și se resetează, se trimite și informația din \texttt{data\_int} în \texttt{data\_in} și se setează valoarea lui \texttt{byte\_sync} la 1 (ea fiind default 0) pentru a semnala trimiterea unui nou \texttt{data\_in} către instruction decoder. \\
+Pe frontul crescător (blocul \texttt{always posedge}) se realizează recepția datelor de la Master. Se citește bit cu bit din linia \texttt{miso} în registrul de shift intern, de la MSB la LSB. Odată ce se citește valoarea ultimului bit (LSB), counter-ul se resetează, iar octetul complet format este salvat în \texttt{data\_latch} și se inversează starea semnalului intern \texttt{flag\_toggle}.\\
 \\
-Citirea și scrierea se realizează doar atunci când chip select-ul \texttt{cs\_n}  este setat (are valoarea 0). Când nu este setat, citirea și scrierea nu se realizează, iar valoarea counterelor interne este în permanență ținută la 7 (poziția MSB).
-
-
-
-
-
-
+Pe frontul descrescător (blocul \texttt{always negedge}) se realizează transmisia datelor către Master. Se scrie pe linia \texttt{mosi} (Output din Slave în această configurație), shiftând biții din \texttt{data\_out} de la MSB la LSB.\\
+\\
+Sincronizarea cu domeniul de ceas al sistemului (\texttt{clk}) se face printr-un bloc separat care urmărește schimbarea semnalului \texttt{flag\_toggle}. Când se detectează o tranziție, se generează pulsul \texttt{byte\_sync} și se actualizează \texttt{data\_in}. Citirea și scrierea se realizează doar atunci când chip select-ul \texttt{cs\_n} este setat.
 
 \newpage
 \section{INSTRUCTION DECODER}
@@ -54,11 +50,11 @@ S5: Se verifică, cu un bloc \texttt{case}, adresa la care se află registrul ca
 
 \newpage
 \section{COUNTER}
-Se creează un counter intern și un \textit{period} intern (numit \texttt{ss}), care este un \texttt{wire} setat ca 1 pe 16 biți, shiftat la stânga cu \texttt{prescale} număr de biți. Se declară un bloc \texttt{always} activ pe frontul crescător al ceasului, care, la activarea funcției de reset, resetează \texttt{count\_val} la valoarea default (0 pentru \texttt{upnotdown = 1} și \texttt{period} pentru \texttt{upnotdown = 0}) și valoarea counter-ului intern la 0. De menționat că registrul care dă valoarea lui \texttt{count\_val} este cu 1 mai mare decât valoarea lui \texttt{count\_val}, pentru a ține cont de faptul că numărătoarea începe de la 0. Numărătoarea începe atunci când \texttt{en} are valoarea 1.\\
+Se creează un counter intern și un \textit{period} intern (numit \texttt{ss}), care este un \texttt{wire} setat ca 1 pe 16 biți, shiftat la stânga cu \texttt{prescale} număr de biți. Se declară un bloc \texttt{always} activ pe frontul crescător al ceasului, care, la activarea funcției de reset, resetează \texttt{count\_val} la valoarea 0, indiferent de direcția de numărare. Registrul intern este mapat direct la ieșirea \texttt{count\_val}. Numărătoarea începe atunci când \texttt{en} are valoarea 1.\\
 \\
-Când \texttt{upnotdown} este 1, numărătoarea este crescătoare de la 0 la \texttt{period - 1}, iar când este 0, este descrescătoare de la \texttt{period - 1} la 0.\\
+Când \texttt{upnotdown} este 1, numărătoarea este crescătoare de la 0 la \texttt{period}. Când este 0, numărătoarea este descrescătoare; dacă valoarea curentă este 0, următorul pas va încărca valoarea \texttt{period}, altfel se decrementează.\\
 \\
-Incrementarea/Decrementarea lui \texttt{count\_value} se realizează atunci când counter-ul intern ajunge la valoarea \texttt{ss - 1} (deoarece începe de la 0). Când se incrementează/decrementează \texttt{count\_value}, counter-ul intern se resetează și el la 0. Când \texttt{count\_value} ajunge la valoarea maximă/minimă și trebuie incrementat/decrementat conform counter-ului intern, el de fapt se întoarce la valoarea minimă/maximă.
+Incrementarea/Decrementarea lui \texttt{count\_value} se realizează atunci când counter-ul intern ajunge la valoarea \texttt{ss - 1} (deoarece începe de la 0). Când se incrementează/decrementează \texttt{count\_value}, counter-ul intern se resetează și el la 0.
 
 
 \newpage
@@ -68,7 +64,7 @@ Incrementarea/Decrementarea lui \texttt{count\_value} se realizează atunci cân
 
 Se utilizează un bloc \texttt{always} activ pe frontul crescător al ceasului. La primirea semnalului de reset, valoarea lui \texttt{pwm\_out} se resetează la 0.\\
 \\
-Când \texttt{pwm\_en} este 0, \texttt{pwm\_out} este și el 0. Când \texttt{pwm\_en} este 1, se verifică în \texttt{functions} tipul de aliniere al semnalului, valoarea \texttt{count\_val} din momentul respectiv al ceasului și valoarea/valorile cu care aceasta din urmă trebuie comparată. În funcție de aceste condiții se determină semnalul \texttt{pwm\_out} la momentul dat.
+Când \texttt{pwm\_en} este 0, \texttt{pwm\_out} este și el 0. Când \texttt{pwm\_en} este 1, se aplică o verificare prioritară: dacă \texttt{compare1} este egal cu \texttt{compare2}, ieșirea \texttt{pwm\_out} este forțată la 0. Altfel, se verifică în \texttt{functions} tipul de aliniere al semnalului, valoarea \texttt{count\_val} din momentul respectiv al ceasului și valoarea/valorile cu care aceasta din urmă trebuie comparată. În funcție de aceste condiții se determină semnalul \texttt{pwm\_out} la momentul dat.
 
 
 \newpage
