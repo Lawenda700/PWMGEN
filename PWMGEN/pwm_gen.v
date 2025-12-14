@@ -21,8 +21,12 @@ module pwm_gen(
             pwm_out_r <= 1'b0;
         end
         else if (pwm_en) begin
-            if (functions[1:0] == 2'b00) begin // daca functions e 00 => aliniat stanga
-                if (count_val < compare1) begin
+            // Daca compare1 si compare2 sunt egale, iesirea e 0
+            if (compare1 == compare2) begin
+                pwm_out_r <= 1'b0;
+            end
+            else if (functions[1:0] == 2'b00) begin // daca functions e 00 => aliniat stanga
+                if (compare1 != 0 && count_val <= compare1) begin
                     pwm_out_r <= 1'b1; // activ pana la compare1
                 end
                 else begin
